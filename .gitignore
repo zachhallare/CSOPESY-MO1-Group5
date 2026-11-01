@@ -1,0 +1,6 @@
+build/
+out/
+.vs/
+*.exe
+csopesy-log.txt
+.claude/
