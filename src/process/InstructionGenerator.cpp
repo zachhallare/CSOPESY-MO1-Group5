@@ -32,11 +32,30 @@ Operand randomOperand() {
 }  // namespace
 
 Program InstructionGenerator::generate(const std::string& processName, uint64_t minIns,
-                                       uint64_t maxIns) {
+                                       uint64_t maxIns, ProgramPattern pattern) {
+    const uint64_t length = util::randRange(minIns, maxIns);
+    if (pattern == ProgramPattern::PrintAdd) return generatePrintAdd(length);
+
     Program program;
     program.message("Hello world from " + processName + "!");
     for (const char* name : kVariables) program.var(name);
-    fill(program.code, util::randRange(minIns, maxIns), 0);
+    fill(program.code, length, 0);
+    return program;
+}
+
+Program InstructionGenerator::generatePrintAdd(uint64_t length) {
+    Program program;
+    const uint16_t valueFrom = program.message("Value from: ");
+    const VarId x = program.var("x");  // every process starts with x = 0
+    program.code.reserve(length);
+    for (uint64_t i = 0; i < length; ++i) {
+        if (i % 2 == 0) {
+            program.code.push_back(Instruction::print(valueFrom, x));
+        } else {
+            const auto amount = static_cast<uint16_t>(util::randRange(1, 10));
+            program.code.push_back(Instruction::add(x, Operand::variable(x), Operand::literal(amount)));
+        }
+    }
     return program;
 }
 

@@ -49,7 +49,13 @@ max-ins 2000
 delay-per-exec 0
 ```
 
-`delays-per-exec` is accepted as an alias of `delay-per-exec`. An optional `tick-delay-ms` (default 10, 0 = as fast as possible) sets the real-time length of one CPU tick.
+`delays-per-exec` is accepted as an alias of `delay-per-exec`. Optional extra keys:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `tick-delay-ms` | `10` | Real-time length of one CPU tick (0 = as fast as possible) |
+| `batch-tick-ms` | `250` | Real-time length of one batch-generator tick; `batch-process-freq` counts these, so generation is paced independently of CPU speed |
+| `instruction-pattern` | `"random"` | `"print-add"` makes every program alternate `PRINT("Value from: " +x)` and `ADD(x, x, 1-10)`, with `x` starting at 0 |
 
 ## Layout
 

@@ -118,6 +118,22 @@ void testGeneratorBounds() {
     }
 }
 
+void testPrintAddPattern() {
+    Process p(1, "proc-01", InstructionGenerator::generate("proc-01", 10, 10, ProgramPattern::PrintAdd));
+    check(p.totalInstructions() == 10, "print-add program has exact length");
+    runToEnd(p);
+    const auto logs = p.formattedLogs();
+    check(logs.size() == 5, "print-add alternates PRINT and ADD");
+    check(endsWith(logs[0], "\"Value from: 0\""), "x starts at 0");
+    int previous = -1;
+    for (const auto& line : logs) {
+        const auto start = line.rfind(' ') + 1;
+        const int value = std::stoi(line.substr(start, line.size() - start - 1));
+        check(value > previous, "x strictly increases between PRINTs");
+        previous = value;
+    }
+}
+
 void testConfig() {
     const std::string path = "test-config.txt";
     auto load = [&](const std::string& text, Config& cfg) {
@@ -152,6 +168,7 @@ int main() {
     testNestedForCounts();
     testSleep();
     testGeneratorBounds();
+    testPrintAddPattern();
     testConfig();
 
     if (failures == 0) std::cout << "All tests passed.\n";

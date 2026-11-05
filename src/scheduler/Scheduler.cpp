@@ -7,6 +7,7 @@
 Scheduler::Scheduler(const Config& config)
     : config_(config),
       policy_(parseSchedulingPolicy(config.scheduler)),
+      pattern_(parseProgramPattern(config.instructionPattern)),
       barrier_(static_cast<std::ptrdiff_t>(config.numCpu) + 1) {  // cores + clock
     for (uint64_t i = 0; i < config_.numCpu; ++i) cores_.emplace_back(static_cast<int>(i));
 }
@@ -27,7 +28,12 @@ void Scheduler::stop() {
     coreThreads_.clear();
 }
 
-bool Scheduler::startGenerating() { return !generating_.exchange(true); }
+bool Scheduler::startGenerating() {
+    if (generating_) return false;
+    restartBatchClock_ = true;  // set before generating_ so the clock never sees a stale deadline
+    generating_ = true;
+    return true;
+}
 
 bool Scheduler::stopGenerating() { return generating_.exchange(false); }
 
@@ -37,7 +43,7 @@ std::shared_ptr<Process> Scheduler::createProcess(const std::string& name) {
         if (processes_.count(name) != 0) return nullptr;
     }
     // Generate outside the lock so a long program doesn't stall the clock.
-    auto program = InstructionGenerator::generate(name, config_.minIns, config_.maxIns);
+    auto program = InstructionGenerator::generate(name, config_.minIns, config_.maxIns, pattern_);
 
     std::lock_guard lock(mutex_);
     if (processes_.count(name) != 0) return nullptr;
@@ -106,10 +112,7 @@ void Scheduler::bookkeeping() {
     std::lock_guard lock(mutex_);
     const uint64_t tick = ++cpuCycles_;
 
-    if (generating_ && tick % config_.batchProcessFreq == 0) {
-        const std::string name = nextBatchName();
-        admit(name, InstructionGenerator::generate(name, config_.minIns, config_.maxIns));
-    }
+    if (generating_) generateBatch();
 
     // Free cores whose process finished, went to sleep, or used up its quantum.
     for (auto& core : cores_) {
@@ -149,6 +152,21 @@ void Scheduler::bookkeeping() {
         ready_.pop_front();
         process->setState(ProcessState::Running);
         core.assign(std::move(process));
+    }
+}
+
+void Scheduler::generateBatch() {
+    const auto now = std::chrono::steady_clock::now();
+    const auto period = std::chrono::milliseconds(config_.batchTickMs);
+    if (restartBatchClock_.exchange(false)) {
+        nextBatchTick_ = now + period;
+        batchTicks_ = 0;
+    }
+    while (now >= nextBatchTick_) {
+        nextBatchTick_ += period;
+        if (++batchTicks_ % config_.batchProcessFreq != 0) continue;
+        const std::string name = nextBatchName();
+        admit(name, InstructionGenerator::generate(name, config_.minIns, config_.maxIns, pattern_));
     }
 }
 

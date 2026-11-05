@@ -59,7 +59,7 @@ void ConsoleManager::initialize() {
     std::cout << "Initialized: " << config.numCpu << " CPU(s), scheduler " << config.scheduler
               << ", quantum " << config.quantumCycles << ", batch freq " << config.batchProcessFreq
               << ", instructions " << config.minIns << "-" << config.maxIns << ", delay "
-              << config.delaysPerExec << ".\n";
+              << config.delaysPerExec << ", pattern " << config.instructionPattern << ".\n";
 }
 
 void ConsoleManager::attach(std::shared_ptr<Process> process) {

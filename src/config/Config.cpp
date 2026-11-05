@@ -51,6 +51,10 @@ bool Config::load(const std::string& path, Config& out, std::string& error,
             cfg.scheduler = util::toLower(value);
             continue;
         }
+        if (key == "instruction-pattern") {
+            cfg.instructionPattern = util::toLower(value);
+            continue;
+        }
 
         uint64_t* field = nullptr;
         if (key == "num-cpu") field = &cfg.numCpu;
@@ -60,6 +64,7 @@ bool Config::load(const std::string& path, Config& out, std::string& error,
         else if (key == "max-ins") field = &cfg.maxIns;
         else if (key == "delays-per-exec" || key == "delay-per-exec") field = &cfg.delaysPerExec;
         else if (key == "tick-delay-ms") field = &cfg.tickDelayMs;
+        else if (key == "batch-tick-ms") field = &cfg.batchTickMs;
 
         if (field == nullptr) {
             warnings.push_back("Ignoring unknown parameter '" + key + "'.");
@@ -75,13 +80,19 @@ bool Config::load(const std::string& path, Config& out, std::string& error,
         error = "'scheduler' must be \"fcfs\" or \"rr\", got \"" + cfg.scheduler + "\".";
         return false;
     }
+    if (cfg.instructionPattern != "random" && cfg.instructionPattern != "print-add") {
+        error = "'instruction-pattern' must be \"random\" or \"print-add\", got \"" +
+                cfg.instructionPattern + "\".";
+        return false;
+    }
     if (!checkRange("num-cpu", cfg.numCpu, 1, 128, error) ||
         !checkRange("quantum-cycles", cfg.quantumCycles, 1, kMaxValue, error) ||
         !checkRange("batch-process-freq", cfg.batchProcessFreq, 1, kMaxValue, error) ||
         !checkRange("min-ins", cfg.minIns, 1, kMaxValue, error) ||
         !checkRange("max-ins", cfg.maxIns, 1, kMaxValue, error) ||
         !checkRange("delay-per-exec", cfg.delaysPerExec, 0, kMaxValue, error) ||
-        !checkRange("tick-delay-ms", cfg.tickDelayMs, 0, 10000, error)) {
+        !checkRange("tick-delay-ms", cfg.tickDelayMs, 0, 10000, error) ||
+        !checkRange("batch-tick-ms", cfg.batchTickMs, 1, 60000, error)) {
         return false;
     }
     if (cfg.minIns > cfg.maxIns) {

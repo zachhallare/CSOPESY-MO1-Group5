@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <barrier>
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "config/Config.h"
+#include "process/InstructionGenerator.h"
 #include "process/Process.h"
 #include "scheduler/CPUCore.h"
 #include "scheduler/SchedulingPolicy.h"
@@ -49,6 +51,9 @@ private:
     void clockLoop();
     void coreLoop(size_t coreIndex);
     void bookkeeping();
+    // Advances the real-time batch clock and admits a process every batch-process-freq
+    // batch ticks. Caller holds mutex_.
+    void generateBatch();
 
     // Caller holds mutex_.
     std::shared_ptr<Process> admit(const std::string& name, Program program);
@@ -56,6 +61,7 @@ private:
 
     const Config config_;
     const SchedulingPolicy policy_;
+    const ProgramPattern pattern_;
     std::vector<CPUCore> cores_;
 
     mutable std::mutex mutex_;
@@ -65,6 +71,10 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Process>> processes_;
     uint64_t nextId_ = 1;
     uint64_t nextBatchIndex_ = 1;
+    // Batch clock, touched only by the clock thread.
+    std::chrono::steady_clock::time_point nextBatchTick_;
+    uint64_t batchTicks_ = 0;
+    std::atomic<bool> restartBatchClock_{false};
 
     std::atomic<uint64_t> cpuCycles_{0};
     std::atomic<bool> generating_{false};

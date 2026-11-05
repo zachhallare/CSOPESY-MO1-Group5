@@ -15,6 +15,12 @@ struct Config {
     uint64_t delaysPerExec = 0;
     // Not part of the spec: real-time pause between CPU ticks so progress is watchable.
     uint64_t tickDelayMs = 10;
+    // Not part of the spec: real-time length of one batch-generator tick. batch-process-freq
+    // counts these, so generation is paced independently of how fast the cores run.
+    uint64_t batchTickMs = 250;
+    // Not part of the spec: "random", or "print-add" for alternating
+    // PRINT("Value from: " + x) / ADD(x, x, 1-10) programs.
+    std::string instructionPattern = "random";
 
     // Parses a whitespace-separated key/value file. On failure, returns false and fills
     // `error`; recoverable oddities such as unknown keys go to `warnings`.
